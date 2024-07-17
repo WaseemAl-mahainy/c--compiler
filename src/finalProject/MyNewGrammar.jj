@@ -1,0 +1,491 @@
+options {
+
+	LOOKAHEAD =3;
+	FORCE_LA_CHECK = true;
+}
+PARSER_BEGIN(test)
+package finalProject;
+import Nodes.*;
+
+public class test
+{
+  public static void main(String [] args)
+  {
+   
+     try { 
+      test parser = new test(System.in);
+      treeNode  n = parser.start();
+      n.execute();
+    }
+    catch(Exception e) { System.out.print(e.getMessage());}  
+    
+  }
+}
+
+PARSER_END(test)
+
+SKIP :
+{
+  " "
+  |
+  "\t"
+  |
+  "\n"
+  |
+  "\r"
+
+}
+TOKEN :
+{
+  < CLOSE : ")" >
+| < OPEN : "(" >
+| < OPENSQ : "[" >
+| < CLOSESQ : "]" >
+| < QUOTE : "\"" >
+| < INCRESS : "++" >
+| < PLUS: "+" >
+| < DECRESS : "--" >
+| < MATHOP :
+    (
+      "+"
+    | "-"
+    | "*"
+    | "/"
+    ) >
+	| < LOGICOP :
+    (
+      "&&"
+    | "||"
+    ) >
+	| < COMPAREOP :
+    (
+      ">"
+    | "<"
+    | ">="
+    | "<="
+    | "=="
+    | "!="
+    ) >
+	| < #CHAR : [ "a"-"z", "A"-"Z" ] >
+	| < #DIGIT : [ "0"-"9" ] >
+	| < #SPECIAL : [ "_", "-", ":", ".", ",", "?" ] >
+	|
+	< FOR:"for" >
+	| 
+  	< SWITCH:"switch" >
+  	|
+  	< DEFAUL:"default" >
+	| 
+  	< IN: "in" >
+	| 
+  	< CASE:"case" >
+  	|
+  	<BREAK:"break" >
+  	| 
+  	<PRINT:"Console.WriteLine" |"Console.Write"|"console.writeline" >
+  	|
+  	< READ:"Console.ReadLine()" >
+  	| 
+  	< DTYPE: "int"|"float"|"double"|"bool"|"string"|"char" >
+  	|
+  	< WHILE: "while" >
+  	|   
+  	< IF : "if" >
+  	|
+  	< ELSEIF: "else if" > 
+  	|
+  	< ELSE: "else" > 
+	|
+	<DO:"do" >
+  	|
+	< END:";" >
+	|
+	< EQ : "=" > 
+  	| 
+  	< INT :(< DIGIT >)+ >
+  	|
+  	< DOUBLE: < INT > "."(< INT >) * > 
+  	| < STR :
+    < QUOTE > < CHAR >
+    (
+      (< CHAR >)+
+    | < INT >
+    | " "
+    | < SPECIAL >
+    
+    )*
+    < QUOTE > >
+  
+  	| < BOOL : ( "true" | "false" ) >
+  
+  	| < VAR :
+    ("_")? (< CHAR >)+
+    (
+      (< CHAR >) | (< DIGIT >) | "_" | "-"
+    )* >  
+  |
+  <ENDPROGRAM : "return 0;">
+  
+}
+
+
+treeNode start():
+{
+  treeNode i;
+  blockNode b = new blockNode(); 
+}
+{
+	i=block()
+   { b.addChild(i); }
+    <ENDPROGRAM>
+    
+	{  return b;}
+
+}
+
+
+
+
+printNode print() :
+{
+  printNode p = new printNode();
+  Token t1, t2,t3;
+    valueNode s1, s2,s3;
+
+}
+{
+  
+    < PRINT ><OPEN >
+  
+  (
+    (
+    (t1 = < INT > { s1 = new intNode(t1.image); p.addChild(s1);})
+    |
+    (t1 = < VAR > { s1 = new varNode(t1.image); p.addChild(s1);})
+    |
+    (t1 = < STR > { s1 = new stringNode(t1.image); p.addChild(s1);})
+    |
+    (t1 = < BOOL > { s1 = new boolNode(t1.image); p.addChild(s1);})
+
+  )
+  (
+    < PLUS >
+    (
+      (t2 = < INT > { s2 = new intNode(t2.image); p.addChild(s2);})
+      |
+      (t2 = < VAR > { s2 = new varNode(t2.image); p.addChild(s2);})
+      |
+      (t2 = < STR > { s2 = new stringNode(t2.image); p.addChild(s2);})
+      |
+      (t2 = < BOOL > { s2 = new boolNode(t2.image); p.addChild(s2);})
+    )
+  )*
+)
+< CLOSE > <END >
+
+    
+  {
+    return p;
+  }
+}
+blockNode block() :
+{
+  blockNode b = new blockNode();
+  treeNode i;
+}
+
+{
+  (
+            (
+                 i = declareSt()
+                 |i=while_fun()
+              	 |i = if_fun()    
+                 |i = assignSt()
+                 |i= switchSt()
+                 | i=print()
+                 | i=incress_decress()
+                 | i=forSt()
+                 | i=doWhileSt()
+            )
+                   { b.addChild(i); }
+
+        )+
+    
+	
+	{
+	  return b;
+	}
+
+}
+
+
+ifNode if_fun():
+{
+ ifNode i = new ifNode();
+ condNode c;
+ blockNode b;
+ boolean bol;
+  }
+{
+{System.out.println("vars2:"+declareNode.variables); }
+< IF> c = condition ()"{" b=block() "}" {
+if((boolean)c.execute()) { 
+i.addChild(c);
+
+  i.addChild(b); } }
+
+(
+  < ELSEIF > c=condition()"{"b=block()"}") *
+  {
+    if((boolean)c.execute()) { 
+ 	i.addChild(c);
+  	i.addChild(b); }
+} 
+(
+  < ELSE >"{"b=block()"}")?
+{
+
+ return i; 
+}  
+
+}
+whileNode while_fun():
+	{condNode c;
+	blockNode b;
+	whileNode wh= new whileNode();}
+{
+
+<WHILE >c=condition() "{" b=block() "}"
+{
+  wh.addChild(c);
+  wh.addChild(b);
+  return wh;
+}
+
+
+
+
+}
+
+
+condNode condition():
+{
+  condNode c = new condNode();
+ 
+  stringNode s,s4;
+       
+  valueNode s1, s2;
+    
+  Token t1,t2 , t3;
+  }
+{
+
+  
+<OPEN> ((t1 = < INT > { s1 = new intNode(t1.image); c.addChild(s1);})
+    |
+    (t1 = < VAR > { s4 = new stringNode(t1.image); c.addChild(s4);})
+    |
+    (t1 = < STR > { s1 = new stringNode(t1.image); c.addChild(s1);})
+    |
+    (t1 = < BOOL > { s1 = new boolNode(t1.image); c.addChild(s1);}))
+
+
+
+
+    
+    (t3 = < COMPAREOP > { s=new stringNode(t3.image);c.addChild(s); })
+
+
+
+
+    
+    (
+      
+    (t2 = < INT > { s2 = new intNode(t2.image); c.addChild(s2);})
+    |
+    (t2 = < VAR > { s4 = new stringNode(t2.image); c.addChild(s4);})
+    |
+    (t2 = < STR > { s2 = new stringNode(t2.image); c.addChild(s2);})
+    |
+    (t2 = < BOOL > { s2 = new boolNode(t2.image); c.addChild(s2);}))
+(
+  < LOGICOP >
+  t1=< INT > t3=< COMPAREOP >t2=< INT >
+)*
+
+
+
+<CLOSE>
+
+{
+  return c;
+}
+}
+
+
+
+
+
+declareNode declareSt():
+{declareNode d=new declareNode();
+ stringNode x;
+ valueNode c;
+ valueNode v=new valueNode();
+ Token t,t1,t2,t3=null,t4;
+}
+{
+
+ < DTYPE >
+ t1 = <VAR>
+ 
+   (
+     t2 = < EQ >
+ 	(t3 = <INT>|t3=< DOUBLE >|t3=< STR >|t3=< BOOL >|t3=< READ >)
+ )?
+ 
+ <END>
+ {
+   if(t3!=null) { 
+  x = new stringNode(t1.image);
+  c = new valueNode(t3.image); }
+  else { 
+   x = new stringNode(t1.image);
+  c = new valueNode(0); }
+
+                d.addChild(x);
+                d.addChild(c);
+
+                return d;
+ }
+ 
+}
+
+
+
+assignNode assignSt():
+{
+  assignNode a = new assignNode();
+  stringNode x;
+  valueNode c;
+  valueNode v=new valueNode();
+  Token t1,t3;
+}
+{
+  
+  t1 = <VAR> 
+  < EQ >
+  (
+    t3 = <INT>|t3=< DOUBLE >|t3=< STR >|t3=< BOOL >|t3=< READ >)
+  <END>
+  {
+    x = new stringNode(t1.image);
+    c = new valueNode(t3.image);
+
+                a.addChild(x);
+                a.addChild(c);
+
+                return a;
+  }
+  
+} 
+
+
+modificationNode incress_decress():
+{
+    modificationNode  m = new modificationNode ();
+    stringNode s1,s2;
+    Token t1,t2;
+}
+{
+
+t1 = <VAR>(t2 = <INCRESS>|t2 = <DECRESS>)<END>
+    {
+       s1 = new stringNode(t1.image);
+       s2 = new stringNode(t2.image);
+
+       m.addChild(s1);
+       m.addChild(s2); 
+
+       return m;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+switchNode switchSt(): {switchNode sn=new switchNode(); Token t1,t2;
+blockNode bl; valueNode s2; varNode v,v1; }
+{
+  < SWITCH ><OPEN > t1=<VAR > { v1=new varNode(t1.image); sn.addChild(v1); } <CLOSE >"{"
+  (
+    < CASE >
+    
+ 	(
+    (t2 = < INT > { s2 = new intNode(t2.image); sn.addChild(s2);})
+    |
+    (t2 = < VAR> { v = new varNode(t2.image); sn.addChild(v);})
+  	| 
+    (t2 = < STR > { s2 = new stringNode(t2.image); sn.addChild(s2);})
+    |
+    (t2 = < BOOL > { s2 = new boolNode(t2.image); sn.addChild(s2);})) ":"
+    
+    bl=block() {sn.addChild(bl); } < BREAK ><END >)+
+
+
+    
+    < DEFAUL > ":"bl=block() {sn.addChild(bl); }< BREAK > <END >
+"}"
+{
+  return sn; }
+
+}
+
+
+
+
+forNode forSt():
+{
+   forNode fr = new forNode();
+   declareNode d;
+  condNode c;
+  blockNode b;
+  modificationNode m;
+ 
+}
+{
+<FOR >< OPEN >d=declareSt()c=condition() < END > m=incress_decress()< CLOSE >"{"b=block()"}"
+
+{
+  fr.addChild(d);
+  fr.addChild(c);
+  fr.addChild(m);
+  fr.addChild(b);
+  return fr;
+}
+}
+
+
+
+doWhileNode doWhileSt():
+{
+
+  doWhileNode wh = new doWhileNode();
+  condNode c;
+  blockNode b;
+  
+}
+{
+<DO >"{" b=block() "}"< WHILE >c=condition() < END >
+{
+  wh.addChild(b);
+  wh.addChild(c);
+  return wh;
+}
+
+}
